@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Рефрактометрийн Симуляци (Эмийн Шинжилгээ)</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: linear-gradient(135deg, #00bcd4, #4caf50);
+            margin: 0;
+            padding: 0;
+            text-align: center;
+        }
+
+        .container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 30px;
+            background-color: rgba(255, 255, 255, 0.9);
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            font-size: 32px;
+            color: #333;
+            margin-bottom: 20px;
+        }
+
+        .slider-container {
+            margin-top: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .slider {
+            width: 70%;
+            border-radius: 10px;
+            height: 8px;
+            background-color: #ddd;
+        }
+
+        .slider:focus {
+            outline: none;
+            box-shadow: 0 0 10px rgba(0, 123, 255, 0.5);
+        }
+
+        .value {
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        .output {
+            margin-top: 20px;
+            font-size: 18px;
+        }
+
+        .result-box {
+            display: inline-block;
+            padding: 20px;
+            margin: 20px 0;
+            background-color: #e0f7fa;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15);
+        }
+
+        .formula {
+            margin-top: 20px;
+            font-size: 18px;
+            color: #ff5722;
+        }
+
+        #canvas {
+            margin-top: 30px;
+            border: 2px solid #333;
+            background-color: rgba(255, 255, 255, 0.7);
+            border-radius: 10px;
+            width: 100%;
+            height: 300px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        .reset-button {
+            margin-top: 20px;
+            padding: 12px 24px;
+            background-color: #ff5722;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 18px;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .reset-button:hover {
+            background-color: #f44336;
+        }
+
+        .tooltip {
+            position: absolute;
+            background-color: #333;
+            color: white;
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .slider-container:hover .tooltip {
+            opacity: 1;
+        }
+
+        .tooltip:before {
+            content: "→";
+            position: absolute;
+            top: 50%;
+            left: -8px;
+            transform: translateY(-50%);
+        }
+
+        .ray {
+            cursor: pointer;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Рефрактометрийн Симуляци (Эмийн Шинжилгээ)</h1>
+    <p>Энэхүү симуляци нь биофлюид болон химийн бодисуудын рефрактометрийн индексийг хэмжихэд туслана. Тохируулга хийхийн тулд хэрэглэгчийн хүссэн бодис болон орчны индексийг сонгоно уу.</p>
+
+    <div class="slider-container">
+        <label for="incident-angle">Оролтын өнцөг (°):</label>
+        <input type="range" id="incident-angle" min="0" max="90" value="30" class="slider">
+        <span id="angle-value" class="value">30°</span>
+        <div class="tooltip">Өнцөг сонгох</div>
+    </div>
+
+    <div class="slider-container">
+        <label for="n1">Орчны рефрактометрийн индекс (n1):</label>
+        <input type="range" id="n1" min="1" max="2" step="0.01" value="1.33" class="slider">
+        <span id="n1-value" class="value">1.33</span>
+        <div class="tooltip">Орчны рефрактометрийн индекс</div>
+    </div>
+
+    <div class="slider-container">
+        <label for="substance">Бодисын сонголт:</label>
+        <select id="substance">
+            <option value="water" data-n2="1.333">Ус (Water)</option>
+            <option value="glucose" data-n2="1.47">Глюкоз (Glucose)</option>
+            <option value="glycerin" data-n2="1.47">Глицерин (Glycerin)</option>
+            <option value="blood" data-n2="1.38">Цус (Blood)</option>
+            <option value="plasma" data-n2="1.35">Цусны плазм (Plasma)</option>
+        </select>
+    </div>
+
+    <div class="output">
+        <p>Тооцоолсон Гэрэлтэлтийн өнцөг (i1): <span id="result-angle">0</span>°</p>
+        <div class="result-box">
+            <p>Рефрактометрийн индексийн харьцаа: <span id="index-ratio"></span></p>
+            <p>Рефрактометрийн Тухайн Формула: <span class="formula">n1 * sin(i) = n2 * sin(i1)</span></p>
+        </div>
+    </div>
+
+    <!-- Canvas for visual representation -->
+    <canvas id="canvas" width="500" height="300"></canvas>
+
+    <!-- Reset Button -->
+    <button class="reset-button" onclick="resetSimulation()">Тохируулгуудыг сэргээх</button>
+</div>
+
+<script>
+    // Элементүүдийг ѳргѳжүүлэх
+    const angleSlider = document.getElementById("incident-angle");
+    const n1Slider = document.getElementById("n1");
+    const substanceSelector = document.getElementById("substance");
+
+    const angleValue = document.getElementById("angle-value");
+    const n1Value = document.getElementById("n1-value");
+
+    const resultAngle = document.getElementById("result-angle");
+    const indexRatio = document.getElementById("index-ratio");
+
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    // Гэрэлтэлтийн өнцөг тооцоолох
+    function calculateRefraction() {
+        const i = parseFloat(angleSlider.value); // Оролтын өнцөг
+        const n1 = parseFloat(n1Slider.value); // Орчны индекс
+        const n2 = parseFloat(substanceSelector.selectedOptions[0].dataset.n2); // Бодисын индекс
+
+        const iRadians = i * Math.PI / 180; // Өнцгийг радианд хөрвүүлэх
+
+        const sinI1 = (n1 / n2) * Math.sin(iRadians);
+        const i1 = Math.asin(Math.min(sinI1, 1)) * 180 / Math.PI; // Рефрактцийн өнцөг
+
+        resultAngle.textContent = i1.toFixed(2);
+        indexRatio.textContent = (n1 / n2).toFixed(2);
+
+        drawRefraction(i, i1);
+    }
+
+    // Рефрактцийн гэрэл зурж үзүүлэх
+    function drawRefraction(i, i1) {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+        const mediumHeight = canvas.height / 2;
+        const centerX = 100;
+
+        // Оролтын туяа (Incident Ray)
+        const incidentX = centerX + 100 * Math.cos(i * Math.PI / 180);
+        const incidentY = mediumHeight - 100 * Math.sin(i * Math.PI / 180);
+
+        // Рефрактцийн туяа (Refracted Ray)
+        const refractedX = centerX + 100 * Math.cos(i1 * Math.PI / 180);
+        const refractedY = mediumHeight + 100 * Math.sin(i1 * Math.PI / 180);
+
+        // Гэрэлтэлтийн туяа зурж үзүүлэх
+        drawRay(centerX, mediumHeight, incidentX, incidentY, "#ff6347", 2); // Оролтын туяа
+        drawRay(centerX, mediumHeight, refractedX, refractedY, "#1e90ff", 2); // Рефрактцийн туяа
+    }
+
+    function drawRay(x1, y1, x2, y2, color, width) {
+        ctx.beginPath();
+        ctx.moveTo(x1, y1);
+        ctx.lineTo(x2, y2);
+        ctx.strokeStyle = color;
+        ctx.lineWidth = width;
+        ctx.lineCap = "round";
+        ctx.stroke();
+    }
+
+    // Тохируулгуудыг сэргээх
+    function resetSimulation() {
+        angleSlider.value = 30;
+        n1Slider.value = 1.33;
+        substanceSelector.selectedIndex = 0;
+        angleValue.textContent = '30°';
+        n1Value.textContent = '1.33';
+        calculateRefraction();
+    }
+
+    // Үйлдлүүдийн хариу үйлдэл
+    angleSlider.addEventListener("input", function () {
+        angleValue.textContent = `${angleSlider.value}°`;
+        calculateRefraction();
+    });
+
+    n1Slider.addEventListener("input", function () {
+        n1Value.textContent = n1Slider.value;
+        calculateRefraction();
+    });
+
+    substanceSelector.addEventListener("change", calculateRefraction);
+
+    calculateRefraction();
+</script>
+
+</body>
+</html>
